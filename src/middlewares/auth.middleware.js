@@ -59,14 +59,16 @@ export const authorizeSuperAdmin = (req, res, next) => {
 ========================= */
 export const allowRoles = (...roles) => {
   return (req, res, next) => {
-    if (!req.user) {
+    if (!req.user || !req.user.role) {
       return res.status(401).json({
         success: false,
         message: "Unauthorized",
       });
     }
 
-    if (!roles.includes(req.user.role)) {
+    const userRole = req.user.role.toUpperCase();
+
+    if (!roles.map(r => r.toUpperCase()).includes(userRole)) {
       return res.status(403).json({
         success: false,
         message: "Access denied",
