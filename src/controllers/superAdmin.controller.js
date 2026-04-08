@@ -929,7 +929,6 @@ export const toggleOwnerStatus = async (req, res) => {
 
 export const getAnalytics = async (req, res) => {
   try {
-    // 🔒 SUPER ADMIN CHECK
     if (!req.user || req.user.role !== "SUPER_ADMIN") {
       return res.status(403).json({
         success: false,
@@ -937,29 +936,31 @@ export const getAnalytics = async (req, res) => {
       });
     }
 
-    /* ---------- RESTAURANT STATS ---------- */
-    const restaurantStats = await pool.query(`
-      SELECT
-        COUNT(*) AS total,
-        COUNT(*) FILTER (WHERE status = 'ACTIVE') AS active,
-        COUNT(*) FILTER (WHERE status = 'INACTIVE') AS inactive
-      FROM restaurants
-    `);
+    const [restaurantStats, ownersResult, topRestaurants] =
+      await Promise.all([
+        pool.query(`
+          SELECT
+            COUNT(*) AS total,
+            COUNT(*) FILTER (WHERE status = 'ACTIVE') AS active,
+            COUNT(*) FILTER (WHERE status = 'INACTIVE') AS inactive
+          FROM restaurants
+        `),
+
+        pool.query(`
+          SELECT COUNT(*) FROM users WHERE role = 'ADMIN'
+        `),
+
+        pool.query(`
+          SELECT r.id, r.name, r.city, COUNT(o.id) AS orders
+          FROM restaurants r
+          LEFT JOIN orders o ON o.restaurant_id = r.id
+          GROUP BY r.id
+          ORDER BY orders DESC
+          LIMIT 5
+        `),
+      ]);
 
     const statsRow = restaurantStats.rows[0];
-
-    /* ---------- OWNERS COUNT ---------- */
-    const ownersResult = await pool.query(`
-      SELECT COUNT(*) FROM users WHERE role = 'ADMIN'
-    `);
-
-    /* ---------- TOP RESTAURANTS ---------- */
-    const topRestaurants = await pool.query(`
-      SELECT id, name, city
-      FROM restaurants
-      ORDER BY created_at DESC
-      LIMIT 5
-    `);
 
     return res.json({
       success: true,
@@ -975,7 +976,7 @@ export const getAnalytics = async (req, res) => {
           id: r.id,
           name: r.name,
           city: r.city,
-          orders: 0, // placeholder
+          orders: Number(r.orders),
         })),
 
         serverTime: new Date(),
