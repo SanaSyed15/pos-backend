@@ -207,18 +207,25 @@ export const getDashboardStats = async (req, res) => {
       "SELECT COUNT(*) FROM restaurants WHERE status = 'INACTIVE'"
     );
 
-    // ⛔ orders table not ready yet
-    const ordersToday = 0;
+// ✅ FIXED: Orders Today from DB
+const ordersTodayResult = await pool.query(`
+  SELECT COUNT(*) 
+  FROM orders 
+  WHERE DATE(created_at) = CURRENT_DATE
+`);
 
-    return res.json({
-      success: true,
-      data: {
-        totalRestaurants: Number(totalRestaurants.rows[0].count),
-        activeRestaurants: Number(activeRestaurants.rows[0].count),
-        inactiveRestaurants: Number(inactiveRestaurants.rows[0].count),
-        ordersToday,
-      },
-    });
+const ordersToday = Number(ordersTodayResult.rows[0].count);
+
+return res.json({
+  success: true,
+  data: {
+    totalRestaurants: Number(totalRestaurants.rows[0].count),
+    activeRestaurants: Number(activeRestaurants.rows[0].count),
+    inactiveRestaurants: Number(inactiveRestaurants.rows[0].count),
+    ordersToday,
+  },
+});
+
 
   } catch (error) {
     console.error("Dashboard stats error:", error.message);
