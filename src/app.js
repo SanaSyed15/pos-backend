@@ -71,13 +71,14 @@ app.get("/db-health", async (req, res) => {
 ===================== */
 app.use("/api/auth", authRoutes);
 app.use("/api/super-admin", superAdminRoutes);
-app.use("/api/admin", adminRoutes);
+
 app.use("/api/admin/menu", menuRoutes);
 app.use("/api/customer", customerRoutes);
 app.use("/api/admin/staff", staffRoutes);
 app.use("/api/admin/orders", orderRoutes);
 app.use("/api/admin/tables", tableRoutes);
 app.use("/api/staff", staffPanelRoutes);
+app.use("/api/admin", adminRoutes);
 
 /* =====================
    FALLBACK (404)
