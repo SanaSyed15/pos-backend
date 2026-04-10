@@ -59,26 +59,35 @@ export const authorizeSuperAdmin = (req, res, next) => {
 ========================= */
 export const allowRoles = (...roles) => {
   return (req, res, next) => {
+    console.log("----- DEBUG START -----");
+    console.log("req.user:", req.user);
+    console.log("req.user.role:", req.user?.role);
+    console.log("allowed roles:", roles);
+
     if (!req.user || !req.user.role) {
-      return res.status(401).json({
+      return res.status(403).json({
         success: false,
-        message: "Unauthorized",
+        message: "Role missing",
       });
     }
 
     const userRole = req.user.role.toUpperCase();
 
+    console.log("normalized role:", userRole);
+
     if (!roles.map(r => r.toUpperCase()).includes(userRole)) {
       return res.status(403).json({
         success: false,
-        message: "Access denied",
+        message: `Access denied. Your role: ${userRole}`,
       });
     }
+
+    console.log("ACCESS GRANTED");
+    console.log("----- DEBUG END -----");
 
     next();
   };
 };
-
 /* =========================
    CUSTOMER AUTH
 ========================= */
