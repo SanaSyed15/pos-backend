@@ -36,4 +36,13 @@ router.get(
   orderController.getOrderById
 );
 
+router.get(
+  "/",
+  (req, res, next) => {
+    console.log("🔥 ORDERS ROUTE HIT");
+    next();
+  },
+  allowRoles("ADMIN", "SERVING_STAFF", "BILLING_STAFF"),
+  orderController.getOrders
+);
 export default router;
