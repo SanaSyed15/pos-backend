@@ -21,7 +21,8 @@ const app = express();
 app.use(
   cors({
     origin: [
-      "https://pojectfinalrepo.vercel.app", // frontend deployed
+      process.env.FRONTEND_URL,
+      process.env.CUSTOMER_URL, // frontend deployed
       "http://localhost:3000",              // local testing
     ],
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
