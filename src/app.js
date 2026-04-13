@@ -18,13 +18,15 @@ const app = express();
 /* =====================
    CORS CONFIG
 ===================== */
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  process.env.CUSTOMER_URL,
+  "http://localhost:3000",
+].filter(Boolean); // 
+
 app.use(
   cors({
-    origin: [
-      process.env.FRONTEND_URL,
-      process.env.CUSTOMER_URL, // frontend deployed
-      "http://localhost:3000",              // local testing
-    ],
+    origin: allowedOrigins,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     credentials: true,
   })
