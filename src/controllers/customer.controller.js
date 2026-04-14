@@ -21,7 +21,7 @@ const customerLogin = async (req, res) => {
 
     const tableResult = await pool.query(
       `
-      SELECT id, restaurant_id
+      SELECT id, restaurant_id, table_number
       FROM tables
       WHERE qr_token = $1 AND is_active = true
       `,
@@ -50,11 +50,15 @@ const customerLogin = async (req, res) => {
     );
 
     return res.json({
-      success: true,
-      message: "Login successful",
-      token,
-      customer: { name, phone },
-    });
+  success: true,
+  message: "Login successful",
+  token,
+  customer: { name, phone },
+  table: {
+    id: table.id,
+    table_number: table.table_number, 
+  },
+});
 
   } catch (error) {
     console.error("Customer login error:", error.message);
