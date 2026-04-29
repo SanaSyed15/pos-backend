@@ -76,7 +76,7 @@ const createItem = async (req, res) => {
       return res.status(401).json({ success: false, message: "Unauthorized" });
     }
 
-    const { name, description, price, category_id, image_url } = req.body;
+    const { name, description, price, category_id, image_url, is_special } = req.body;
     const { restaurant_id } = req.user;
 
     if (!name || !price) {
@@ -103,8 +103,8 @@ const createItem = async (req, res) => {
 
     const result = await pool.query(
       `INSERT INTO menu_items
-       (restaurant_id, category_id, name, description, price, image_url)
-       VALUES ($1, $2, $3, $4, $5, $6)
+(restaurant_id, category_id, name, description, price, image_url, is_special)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING *`,
       [
         restaurant_id,
@@ -173,11 +173,16 @@ const updateItem = async (req, res) => {
     const values = [];
     let index = 1;
 
-    for (const key in req.body) {
-      fields.push(`${key} = $${index}`);
-      values.push(req.body[key]);
-      index++;
-    }
+    const fieldMap = {
+  isSpecial: "is_special", 
+};
+
+for (const key in req.body) {
+  const dbField = fieldMap[key] || key;
+  fields.push(`${dbField} = $${index}`);
+  values.push(req.body[key]);
+  index++;
+}
 
     if (fields.length === 0) {
       return res.status(400).json({
