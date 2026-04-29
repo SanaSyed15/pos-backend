@@ -21,7 +21,9 @@ const app = express();
 const allowedOrigins = [
   process.env.FRONTEND_URL,
   process.env.CUSTOMER_URL,
+  process.env.SUPERADMIN_URL,
   "http://localhost:3000",
+
 ].filter(Boolean); // 
 
 app.use(
