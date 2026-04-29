@@ -9,30 +9,19 @@ const router = express.Router();
 ========================= */
 
 // 🔥 Apply to ALL menu routes
-router.use(authenticate, allowRoles("ADMIN", "OWNER"));
+router.use(authenticate);
 
-/* =========================
-   MENU CATEGORY ROUTES
-========================= */
 
-router.post("/categories", menuController.createCategory);
+// VIEW (staff allowed)
+router.get("/categories", allowRoles("ADMIN", "OWNER", "SERVING_STAFF", "BILLING_STAFF"), menuController.getCategories);
+router.get("/items", allowRoles("ADMIN", "OWNER", "SERVING_STAFF", "BILLING_STAFF"), menuController.getItems);
 
-router.get("/categories", menuController.getCategories);
+// MODIFY (admin only)
+router.post("/categories", allowRoles("ADMIN", "OWNER"), menuController.createCategory);
+router.put("/categories/:id", allowRoles("ADMIN", "OWNER"), menuController.updateCategory);
+router.delete("/categories/:id", allowRoles("ADMIN", "OWNER"), menuController.deleteCategory);
 
-router.put("/categories/:id", menuController.updateCategory);
-
-router.delete("/categories/:id", menuController.deleteCategory);
-
-/* =========================
-   MENU ITEM ROUTES
-========================= */
-
-router.post("/items", menuController.createItem);
-
-router.get("/items", menuController.getItems);
-
-router.put("/items/:id", menuController.updateItem);
-
-router.patch("/items/:id/toggle", menuController.toggleItem);
-
+router.post("/items", allowRoles("ADMIN", "OWNER"), menuController.createItem);
+router.put("/items/:id", allowRoles("ADMIN", "OWNER"), menuController.updateItem);
+router.patch("/items/:id/toggle", allowRoles("ADMIN", "OWNER"), menuController.toggleItem);
 export default router;
