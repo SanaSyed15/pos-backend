@@ -36,5 +36,10 @@ router.get(
   orderController.getOrderById
 );
 
-
+// Create order (Admin + Staff)
+router.post(
+  "/",
+  allowRoles("ADMIN", "SERVING_STAFF", "BILLING_STAFF"),
+  orderController.createOrder
+);
 export default router;

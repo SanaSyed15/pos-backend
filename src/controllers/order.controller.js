@@ -1,4 +1,93 @@
 import pool from "../config/db.js";
+/* =========================
+   CREATE ORDERS- MANUAL ORDERING (Admin / Staff)
+========================= */
+
+const createOrder = async (req, res) => {
+  const client = await pool.connect();
+
+  try {
+    if (!req.user) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
+
+    const { items, table_id, customer_name, customer_phone } = req.body;
+    const { restaurant_id } = req.user;
+
+    if (!items || items.length === 0 || !table_id) {
+      return res.status(400).json({
+        success: false,
+        message: "Table ID and items are required",
+      });
+    }
+
+    await client.query("BEGIN");
+
+    let subtotal = 0;
+
+    const orderResult = await client.query(
+      `
+      INSERT INTO orders 
+      (restaurant_id, table_id, order_type, customer_name, customer_phone)
+      VALUES ($1, $2, 'DINE_IN', $3, $4)
+      RETURNING *
+      `,
+      [restaurant_id, table_id, customer_name, customer_phone]
+    );
+
+    const order = orderResult.rows[0];
+
+    await client.query(
+      `UPDATE tables
+       SET table_status = 'OCCUPIED',
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $1`,
+      [table_id]
+    );
+
+    for (const item of items) {
+      const menuResult = await client.query(
+        `SELECT price FROM menu_items WHERE id = $1 AND restaurant_id = $2`,
+        [item.menu_item_id, restaurant_id]
+      );
+
+      if (menuResult.rows.length === 0) {
+        throw new Error("Invalid menu item");
+      }
+
+      const price = Number(menuResult.rows[0].price);
+      const itemSubtotal = price * item.quantity;
+
+      subtotal += itemSubtotal;
+
+      await client.query(
+        `INSERT INTO order_items
+         (order_id, menu_item_id, quantity, price, subtotal)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [order.id, item.menu_item_id, item.quantity, price, itemSubtotal]
+      );
+    }
+
+    await client.query("COMMIT");
+
+    return res.status(201).json({
+      success: true,
+      message: "Order created successfully",
+      data: order,
+    });
+
+  } catch (error) {
+    await client.query("ROLLBACK");
+    console.error("Create order error:", error.message);
+
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Server error",
+    });
+  } finally {
+    client.release();
+  }
+};
 
 /* =========================
    GET ORDERS (Admin / Staff)
@@ -277,4 +366,5 @@ export default {
   getOrders,
   updateOrderStatus,
   getOrderById,
+  createOrder,
 };
