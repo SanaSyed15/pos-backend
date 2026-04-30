@@ -110,7 +110,7 @@ export const superAdminForgotPassword = async (req, res) => {
     );
 
     // 🔥 CREATE RESET LINK
-    const resetLink = `${process.env.FRONTEND_URL}/reset-password/${token}`;
+    const resetLink = `${process.env.SUPERADMIN_URL}/reset-password/${token}`;
 
     // 🔥 SEND EMAIL
     await sendEmail(
