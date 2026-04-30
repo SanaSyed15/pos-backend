@@ -1,25 +1,11 @@
-import nodemailer from "nodemailer";
+import { Resend } from "resend";
+
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 export const sendEmail = async (to, subject, html) => {
   try {
-    const transporter = nodemailer.createTransport({
-      host: "smtp.gmail.com",
-      port: 465,
-      secure: true, // MUST be true
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-      },
-      connectionTimeout: 10000, // prevents timeout crash
-    });
-
-    // ✅ Check connection
-    await transporter.verify();
-    console.log("SMTP READY ✅");
-
-    // ✅ Send email
-    await transporter.sendMail({
-      from: `"POS System" <${process.env.EMAIL_USER}>`,
+    await resend.emails.send({
+      from: "onboarding@resend.dev", // default test sender
       to,
       subject,
       html,
