@@ -81,3 +81,78 @@ export const login = async (req, res) => {
     });
   }
 };
+
+import crypto from "crypto";
+
+export const superAdminForgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    const result = await pool.query(
+      "SELECT * FROM users WHERE email=$1 AND role='SUPER_ADMIN'",
+      [email]
+    );
+
+    if (!result.rows.length) {
+      return res.status(404).json({
+        success: false,
+        message: "Super Admin not found",
+      });
+    }
+
+    const token = crypto.randomBytes(32).toString("hex");
+    const expiry = Date.now() + 3600000; // 1 hour
+
+    await pool.query(
+      "UPDATE users SET reset_token=$1, reset_token_expiry=$2 WHERE email=$3",
+      [token, expiry, email]
+    );
+
+    // 🔥 TEMP: return token (no email yet)
+    return res.json({
+      success: true,
+      message: "Reset token generated",
+      token,
+    });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+export const resetPassword = async (req, res) => {
+  try {
+    const { token, password } = req.body;
+
+    const result = await pool.query(
+      "SELECT * FROM users WHERE reset_token=$1 AND reset_token_expiry > $2",
+      [token, Date.now()]
+    );
+
+    if (!result.rows.length) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid or expired token",
+      });
+    }
+
+    const user = result.rows[0];
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    await pool.query(
+      "UPDATE users SET password=$1, reset_token=NULL, reset_token_expiry=NULL WHERE id=$2",
+      [hashedPassword, user.id]
+    );
+
+    res.json({
+      success: true,
+      message: "Password reset successful",
+    });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
