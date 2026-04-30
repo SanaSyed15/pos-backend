@@ -1,6 +1,8 @@
 import pool from "../config/db.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import crypto from "crypto";
+import { sendEmail } from "../utils/sendEmail.js";
 
 // Ensure JWT secret exists
 if (!process.env.JWT_SECRET) {
@@ -82,7 +84,6 @@ export const login = async (req, res) => {
   }
 };
 
-import crypto from "crypto";
 
 export const superAdminForgotPassword = async (req, res) => {
   try {
@@ -108,15 +109,28 @@ export const superAdminForgotPassword = async (req, res) => {
       [token, expiry, email]
     );
 
-    // 🔥 TEMP: return token (no email yet)
+    // 🔥 CREATE RESET LINK
+    const resetLink = `${process.env.FRONTEND_URL}/reset-password/${token}`;
+
+    // 🔥 SEND EMAIL
+    await sendEmail(
+      email,
+      "Reset Your Password",
+      `
+        <h3>Password Reset</h3>
+        <p>Click below to reset your password:</p>
+        <a href="${resetLink}">${resetLink}</a>
+        <p>This link expires in 1 hour.</p>
+      `
+    );
+
     return res.json({
       success: true,
-      message: "Reset token generated",
-      token,
+      message: "Reset email sent",
     });
 
   } catch (error) {
-    console.error(error);
+    console.error("Forgot password error:", error.message);
     res.status(500).json({ message: "Server error" });
   }
 };
