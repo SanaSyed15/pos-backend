@@ -688,6 +688,86 @@ export const updateRestaurantStatus = async (req, res) => {
   }
 };
 
+
+export const deleteRestaurant = async (req, res) => {
+  const { id } = req.params;
+  const client = await pool.connect();
+
+  try {
+    // 🔒 SUPER ADMIN CHECK
+    if (!req.user || req.user.role !== "SUPER_ADMIN") {
+      return res.status(403).json({
+        success: false,
+        message: "Access denied",
+      });
+    }
+
+    await client.query("BEGIN");
+
+    // 1️⃣ Check if restaurant exists
+    const check = await client.query(
+      `SELECT id FROM restaurants WHERE id = $1`,
+      [id]
+    );
+
+    if (check.rows.length === 0) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({
+        success: false,
+        message: "Restaurant not found",
+      });
+    }
+
+    // 2️⃣ DELETE CHILD TABLES FIRST (VERY IMPORTANT)
+    await client.query(
+      `DELETE FROM restaurant_tax_details WHERE restaurant_id = $1`,
+      [id]
+    );
+
+    await client.query(
+      `DELETE FROM restaurant_settings WHERE restaurant_id = $1`,
+      [id]
+    );
+
+    await client.query(
+      `DELETE FROM users WHERE restaurant_id = $1`,
+      [id]
+    );
+
+    // (Optional but recommended if you have orders)
+    await client.query(
+      `DELETE FROM orders WHERE restaurant_id = $1`,
+      [id]
+    );
+
+    // 3️⃣ DELETE MAIN RESTAURANT
+    await client.query(
+      `DELETE FROM restaurants WHERE id = $1`,
+      [id]
+    );
+
+    await client.query("COMMIT");
+
+    return res.json({
+      success: true,
+      message: "Restaurant permanently deleted",
+    });
+
+  } catch (error) {
+    await client.query("ROLLBACK");
+
+    console.error("DELETE RESTAURANT ERROR:", error.message);
+
+    return res.status(500).json({
+      success: false,
+      message: "Delete failed",
+    });
+  } finally {
+    client.release();
+  }
+};
+
+
 export const updateRestaurantOwner = async (req, res) => {
   const { id } = req.params;
   const { name, phone, status } = req.body;

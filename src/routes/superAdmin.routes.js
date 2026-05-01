@@ -49,6 +49,8 @@ router.put("/restaurants/:id/tax", updateRestaurantTax);
 
 router.put("/restaurants/:id/status", updateRestaurantStatus);
 
+router.delete("/restaurant/:id", superAdminController.deleteRestaurant);
+
 router.put("/restaurants/:id/owner", updateRestaurantOwner);
 
 /* =========================
