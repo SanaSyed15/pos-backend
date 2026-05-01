@@ -13,6 +13,7 @@ import {
   getOwnerDetails,
   toggleOwnerStatus,
   getAnalytics,
+  deleteRestaurant,
 } from "../controllers/superAdmin.controller.js";
 
 import {
@@ -49,7 +50,7 @@ router.put("/restaurants/:id/tax", updateRestaurantTax);
 
 router.put("/restaurants/:id/status", updateRestaurantStatus);
 
-router.delete("/restaurant/:id", superAdminController.deleteRestaurant);
+router.delete("/restaurant/:id", deleteRestaurant);
 
 router.put("/restaurants/:id/owner", updateRestaurantOwner);
 
