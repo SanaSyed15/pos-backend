@@ -50,7 +50,7 @@ router.put("/restaurants/:id/tax", updateRestaurantTax);
 
 router.put("/restaurants/:id/status", updateRestaurantStatus);
 
-router.delete("/restaurant/:id", deleteRestaurant);
+router.delete("/restaurants/:id", deleteRestaurant);
 
 router.put("/restaurants/:id/owner", updateRestaurantOwner);
 
