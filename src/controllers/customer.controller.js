@@ -92,13 +92,14 @@ const getMenu = async (req, res) => {
     );
 
     const itemsResult = await pool.query(
-      `SELECT id, category_id, name, description, price, image_url
-       FROM menu_items
-       WHERE restaurant_id = $1 AND is_available = true`,
-      [restaurant_id]
-    );
-
+  `SELECT id, category_id, name, description, price, image_url, is_special
+   FROM menu_items
+   WHERE restaurant_id = $1 AND is_available = true`,
+  [restaurant_id]
+);
+    const specials = itemsResult.rows.filter(item => item.is_special);
     const categories = categoriesResult.rows.map(category => ({
+      
       ...category,
       items: itemsResult.rows.filter(
         item => item.category_id === category.id
@@ -106,9 +107,10 @@ const getMenu = async (req, res) => {
     }));
 
     return res.json({
-      success: true,
-      data: categories,
-    });
+  success: true,
+  data: categories,
+  specials
+});
 
   } catch (error) {
     console.error("Get menu error:", error.message);
@@ -221,6 +223,21 @@ const createOrder = async (req, res) => {
     );
 
     await client.query("COMMIT");
+
+    await pool.query(
+  `DELETE FROM cart_items WHERE table_id = $1`,
+  [table_id]
+);
+
+return res.status(201).json({
+  success: true,
+  message: "Order placed successfully",
+  data: {
+    order_id: order.id,
+    total_amount: total,
+    status: "PLACED",
+  },
+});
 
     return res.status(201).json({
       success: true,
