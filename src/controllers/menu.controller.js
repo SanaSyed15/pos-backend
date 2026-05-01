@@ -107,13 +107,14 @@ const createItem = async (req, res) => {
 VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING *`,
       [
-        restaurant_id,
-        category_id || null,
-        name,
-        description || null,
-        price,
-        image_url || null,
-      ]
+  restaurant_id,
+  category_id || null,
+  name,
+  description || null,
+  price,
+  image_url || null,
+  is_special || false
+]
     );
 
     return res.status(201).json({
@@ -174,11 +175,17 @@ const updateItem = async (req, res) => {
     let index = 1;
 
     const fieldMap = {
-  isSpecial: "is_special", 
+  isSpecial: "is_special",
+  imageUrl: "image_url",
+  categoryId: "category_id",
+  isAvailable: "is_available",
 };
 
 for (const key in req.body) {
+  if (key === "restaurant_id") continue; // 🚫 prevent crash
+
   const dbField = fieldMap[key] || key;
+
   fields.push(`${dbField} = $${index}`);
   values.push(req.body[key]);
   index++;

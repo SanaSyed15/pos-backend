@@ -11,15 +11,32 @@ const createOrder = async (req, res) => {
       return res.status(401).json({ success: false, message: "Unauthorized" });
     }
 
-    const { items, table_id, customer_name, customer_phone } = req.body;
-    const { restaurant_id } = req.user;
+    
+   
 
-    if (!items || items.length === 0 || !table_id) {
-      return res.status(400).json({
-        success: false,
-        message: "Table ID and items are required",
-      });
-    }
+    const { items, table_id, order_type, customer_name, customer_phone } = req.body;
+     const { restaurant_id } = req.user;
+
+if (!items || items.length === 0) {
+  return res.status(400).json({
+    success: false,
+    message: "Items are required",
+  });
+}
+
+if (!order_type || !["DINE_IN", "TAKEAWAY", "DELIVERY"].includes(order_type)) {
+  return res.status(400).json({
+    success: false,
+    message: "Invalid order type",
+  });
+}
+
+if (order_type === "DINE_IN" && !table_id) {
+  return res.status(400).json({
+    success: false,
+    message: "Table ID required for dine-in",
+  });
+}
 
     await client.query("BEGIN");
 
@@ -29,21 +46,29 @@ const createOrder = async (req, res) => {
       `
       INSERT INTO orders 
       (restaurant_id, table_id, order_type, customer_name, customer_phone)
-      VALUES ($1, $2, 'DINE_IN', $3, $4)
+      VALUES ($1, $2, $3, $4, $5)
       RETURNING *
       `,
-      [restaurant_id, table_id, customer_name, customer_phone]
+      [
+  restaurant_id,
+  order_type === "DINE_IN" ? table_id : null,
+  order_type,
+  customer_name,
+  customer_phone
+]
     );
 
     const order = orderResult.rows[0];
 
-    await client.query(
-      `UPDATE tables
-       SET table_status = 'OCCUPIED',
-           updated_at = CURRENT_TIMESTAMP
-       WHERE id = $1`,
-      [table_id]
-    );
+if (order_type === "DINE_IN") {
+  await client.query(
+    `UPDATE tables
+     SET table_status = 'OCCUPIED',
+         updated_at = CURRENT_TIMESTAMP
+     WHERE id = $1`,
+    [table_id]
+  );
+}
 
     for (const item of items) {
       const menuResult = await client.query(
@@ -266,7 +291,7 @@ const updateOrderStatus = async (req, res) => {
       [status, id, restaurant_id]
     );
 
-    if (status === "PAID" || status === "CANCELLED") {
+    if ((status === "PAID" || status === "CANCELLED") && tableId) {
       await pool.query(
         `
         UPDATE tables
