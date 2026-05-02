@@ -170,3 +170,45 @@ export const resetPassword = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
+
+export const forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    const result = await pool.query(
+      "SELECT * FROM users WHERE email=$1 AND role IN ('ADMIN','STAFF')",
+      [email]
+    );
+
+    if (!result.rows.length) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    const user = result.rows[0];
+
+    const token = crypto.randomBytes(32).toString("hex");
+    const expiry = Date.now() + 3600000; // 1 hour
+
+    await pool.query(
+      "UPDATE users SET reset_token=$1, reset_token_expiry=$2 WHERE id=$3",
+      [token, expiry, user.id]
+    );
+
+    const resetLink = `${process.env.ADMIN_URL}/reset-password/${token}`;
+
+    await sendEmail(user.email, resetLink);
+
+    res.json({
+      success: true,
+      message: "Reset link sent",
+    });
+
+  } catch (error) {
+    console.error("Forgot password error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
