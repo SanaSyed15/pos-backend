@@ -81,8 +81,6 @@ const login = async (req, res) => {
   });
 }
 
-// Password check
-const isMatch = await bcrypt.compare(password, user.password);
     // Password check
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
