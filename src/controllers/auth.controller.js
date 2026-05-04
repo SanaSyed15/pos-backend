@@ -198,9 +198,18 @@ export const forgotPassword = async (req, res) => {
       [token, expiry, user.id]
     );
 
-    const resetLink = `${process.env.ADMIN_URL}/reset-password/${token}`;
+    const resetLink = `${process.env.FRONTEND_URL}/reset-password/${token}`;
 
-    await sendEmail(user.email, resetLink);
+    await sendEmail(
+  user.email,
+  "Reset Your Password",
+  `
+    <h3>Password Reset</h3>
+    <p>Click below to reset your password:</p>
+    <a href="${resetLink}">${resetLink}</a>
+    <p>This link expires in 1 hour.</p>
+  `
+);
 
     res.json({
       success: true,
