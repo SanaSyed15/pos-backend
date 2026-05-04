@@ -255,4 +255,57 @@ const getRestaurant = async (req, res) => {
   }
 };
 
-export default { login, me, getRestaurant };
+export const updateMyRestaurantDetails = async (req, res) => {
+  try {
+    const { restaurant_id } = req.user;
+
+    const {
+      restaurant_type,
+      description,
+      address,
+      state,
+      pincode,
+      phone,
+      email
+    } = req.body;
+
+    const result = await pool.query(
+      `
+      UPDATE restaurants
+      SET
+        restaurant_type = COALESCE($1, restaurant_type),
+        description     = COALESCE($2, description),
+        address         = COALESCE($3, address),
+        state           = COALESCE($4, state),
+        pincode         = COALESCE($5, pincode),
+        phone           = COALESCE($6, phone),
+        email           = COALESCE($7, email)
+      WHERE id = $8
+      RETURNING *
+      `,
+      [
+        restaurant_type,
+        description,
+        address,
+        state,
+        pincode,
+        phone,
+        email,
+        restaurant_id
+      ]
+    );
+
+    return res.json({
+      success: true,
+      message: "Restaurant details updated",
+      data: result.rows[0],
+    });
+
+  } catch (error) {
+    console.error("ADMIN UPDATE ERROR:", error.message);
+    res.status(500).json({ success: false });
+  }
+};
+
+
+export default { login, me, getRestaurant, updateMyRestaurantDetails  };
