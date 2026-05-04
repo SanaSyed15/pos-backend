@@ -25,7 +25,7 @@ router.get(
 // Update order status (Staff only)
 router.patch(
   "/:id/status",
-  allowRoles("SERVING_STAFF", "BILLING_STAFF"),
+  allowRoles("ADMIN", "SERVING_STAFF", "BILLING_STAFF"),
   orderController.updateOrderStatus
 );
 

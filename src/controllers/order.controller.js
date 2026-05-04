@@ -248,12 +248,6 @@ const updateOrderStatus = async (req, res) => {
     }
 
     // Role restrictions
-    if (role === "ADMIN") {
-      return res.status(403).json({
-        success: false,
-        message: "Admin cannot update order status",
-      });
-    }
 
     if (role === "SERVING_STAFF") {
       const allowed = ["CONFIRMED", "PREPARING", "READY", "SERVED"];
