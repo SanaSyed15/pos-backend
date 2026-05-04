@@ -11,7 +11,7 @@ import orderRoutes from "./routes/order.routes.js";
 import tableRoutes from "./routes/table.routes.js";
 import staffPanelRoutes from "./routes/staffPanel.routes.js";
 import cartRoutes from "./routes/cart.routes.js";
-
+import restaurantContactsRoutes from "./routes/restaurantContacts.routes.js";
 import pool from "./config/db.js";
 
 const app = express();
@@ -86,6 +86,8 @@ app.use("/api/admin/tables", tableRoutes);
 app.use("/api/staff", staffPanelRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/customer/cart", cartRoutes);
+app.use("/api/admin/restaurant/contacts", restaurantContactsRoutes);
+
 
 /* =====================
    FALLBACK (404)
