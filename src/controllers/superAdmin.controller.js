@@ -1,5 +1,7 @@
 import pool from "../config/db.js";
 import bcrypt from "bcrypt";
+import crypto from "crypto";
+import { sendEmail } from "../utils/sendEmail.js";
 
 export const onboardRestaurant = async (req, res) => {
   const client = await pool.connect();
@@ -99,28 +101,46 @@ export const onboardRestaurant = async (req, res) => {
     );
 
     /* ---------- CREATE ADMIN USER ---------- */
-    const hashedPassword = await bcrypt.hash(
-      admin.password || "Temp@123",
-      10
-    );
+    // 🔐 Generate setup token
+const token = crypto.randomBytes(32).toString("hex");
+const expiry = Date.now() + 3600000; // 1 hour
 
-    await client.query(
-      `
-      INSERT INTO users
-        (name, email, phone, password, role, restaurant_id)
-      VALUES
-        ($1,$2,$3,$4,'ADMIN',$5)
-      `,
-      [
-        admin.name,
-        admin.email || null,
-        admin.phone || null,
-        hashedPassword,
-        restaurantId,
-      ]
-    );
+// 👤 Create admin WITHOUT password
+await client.query(
+  `
+  INSERT INTO users
+    (name, email, phone, password, role, restaurant_id, reset_token, reset_token_expiry)
+  VALUES
+    ($1,$2,$3,$4,'ADMIN',$5,$6,$7)
+  `,
+  [
+    admin.name,
+    admin.email || null,
+    admin.phone || null,
+    null, // ❗ no password
+    restaurantId,
+    token,
+    expiry,
+  ]
+);
 
     await client.query("COMMIT");
+
+    // 🔗 Create reset link
+const resetLink = `${process.env.FRONTEND_URL}/set-password/${token}`;
+
+// 📧 Send email
+await sendEmail(
+  admin.email,
+  "Set Your Password",
+  `
+    <h3>Welcome to Restaurant POS</h3>
+    <p>Your account has been created by Super Admin.</p>
+    <p>Click below to set your password:</p>
+    <a href="${resetLink}">${resetLink}</a>
+    <p>This link expires in 1 hour.</p>
+  `
+);
 
     /* ✅ SUCCESS RESPONSE */
     return res.status(201).json({

@@ -72,7 +72,17 @@ const login = async (req, res) => {
         message: "Restaurant is inactive. Contact super admin.",
       });
     }
+    
+    // 🚨 NEW CHECK: password not set yet
+    if (!user.password) {
+       return res.status(400).json({
+        success: false,
+        message: "Account created. Check your email to set your password",
+  });
+}
 
+// Password check
+const isMatch = await bcrypt.compare(password, user.password);
     // Password check
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
