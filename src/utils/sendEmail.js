@@ -1,25 +1,18 @@
-import nodemailer from "nodemailer";
+import { Resend } from "resend";
 
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: 587,
-  secure: false,
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-});
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 export const sendEmail = async (to, subject, html) => {
   try {
-    await transporter.sendMail({
-      from: `"Restaurant POS" <${process.env.EMAIL_USER}>`,
+    const data = await resend.emails.send({
+      from: "Restaurant POS <onboarding@resend.dev>",
       to,
       subject,
       html,
     });
 
-    console.log("EMAIL SENT ✅");
+    console.log("EMAIL SENT ✅", data);
+
   } catch (error) {
     console.error("EMAIL ERROR ❌:", error);
     throw error;
