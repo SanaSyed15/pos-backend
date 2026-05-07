@@ -105,6 +105,11 @@ export const onboardRestaurant = async (req, res) => {
 const token = crypto.randomBytes(32).toString("hex");
 const expiry = Date.now() + 3600000; // 1 hour
 
+const tempPassword = await bcrypt.hash(
+  "SET_PASSWORD_PENDING",
+  10
+);
+
 // 👤 Create admin WITHOUT password
 await client.query(
   `
@@ -114,14 +119,14 @@ await client.query(
     ($1,$2,$3,$4,'ADMIN',$5,$6,$7)
   `,
   [
-    admin.name,
-    admin.email || null,
-    admin.phone || null,
-    null, // ❗ no password
-    restaurantId,
-    token,
-    expiry,
-  ]
+  admin.name,
+  admin.email || null,
+  admin.phone || null,
+  tempPassword,
+  restaurantId,
+  token,
+  expiry,
+]
 );
 
     await client.query("COMMIT");
