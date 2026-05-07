@@ -24,7 +24,6 @@ router.get("/restaurant", adminController.getRestaurant);
 router.put(
   "/restaurant/details",
   allowRoles("ADMIN"),
-  updateMyRestaurantDetails
+  adminController.updateMyRestaurantDetails
 );
-
 export default router;
