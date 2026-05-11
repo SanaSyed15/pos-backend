@@ -1,6 +1,6 @@
 import pool from "../config/db.js";
 import bcrypt from "bcrypt";
-import crypto from "crypto";
+
 import { sendEmail } from "../utils/sendEmail.js";
 
 export const onboardRestaurant = async (req, res) => {
@@ -102,48 +102,76 @@ export const onboardRestaurant = async (req, res) => {
 
     /* ---------- CREATE ADMIN USER ---------- */
     // 🔐 Generate setup token
-const token = crypto.randomBytes(32).toString("hex");
-const expiry = Date.now() + 3600000; // 1 hour
+// 🔢 Generate OTP
+const otp = Math.floor(
+  100000 + Math.random() * 900000
+).toString();
 
+const otpExpiry = new Date(
+  Date.now() + 5 * 60 * 1000
+);
+
+// 🔐 Temporary password
 const tempPassword = await bcrypt.hash(
   "SET_PASSWORD_PENDING",
   10
 );
 
-// 👤 Create admin WITHOUT password
+// 👤 Create admin user
 await client.query(
   `
   INSERT INTO users
-    (name, email, phone, password, role, restaurant_id, reset_token, reset_token_expiry)
+    (name, email, phone, password, role, restaurant_id)
   VALUES
-    ($1,$2,$3,$4,'ADMIN',$5,$6,$7)
+    ($1,$2,$3,$4,'ADMIN',$5)
   `,
   [
-  admin.name,
-  admin.email || null,
-  admin.phone || null,
-  tempPassword,
-  restaurantId,
-  token,
-  expiry,
-]
+    admin.name,
+    admin.email || null,
+    admin.phone || null,
+    tempPassword,
+    restaurantId,
+  ]
+);
+
+// 💾 Store OTP
+await client.query(
+  `
+  INSERT INTO otp_codes
+    (email, otp, expires_at)
+  VALUES
+    ($1,$2,$3)
+  `,
+  [
+    admin.email,
+    otp,
+    otpExpiry,
+  ]
 );
 
     await client.query("COMMIT");
 
-    // 🔗 Create reset link
-const resetLink = `${process.env.FRONTEND_URL}/set-password/${token}`;
-
+    
 // 📧 Send email
 await sendEmail(
   admin.email,
-  "Set Your Password",
+  "Restaurant POS OTP Verification",
   `
-    <h3>Welcome to Restaurant POS</h3>
-    <p>Your account has been created by Super Admin.</p>
-    <p>Click below to set your password:</p>
-    <a href="${resetLink}">${resetLink}</a>
-    <p>This link expires in 1 hour.</p>
+    <div style="font-family: Arial; padding: 20px">
+      <h2>Welcome to Restaurant POS</h2>
+
+      <p>Your account has been created.</p>
+
+      <p>Your OTP is:</p>
+
+      <h1 style="color: #4f46e5;">
+        ${otp}
+      </h1>
+
+      <p>
+        OTP valid for 5 minutes.
+      </p>
+    </div>
   `
 );
 
