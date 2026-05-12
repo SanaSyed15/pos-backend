@@ -9,6 +9,10 @@ const transporter = nodemailer.createTransport({
     user: process.env.BREVO_USER,
     pass: process.env.BREVO_PASS,
   },
+
+  connectionTimeout: 10000,
+  greetingTimeout: 10000,
+  socketTimeout: 10000,
 });
 
 export const sendEmail = async (
@@ -17,6 +21,20 @@ export const sendEmail = async (
   html
 ) => {
   try {
+
+    console.log(
+      "BREVO USER:",
+      process.env.BREVO_USER
+    );
+
+    console.log(
+      "BREVO PASS EXISTS:",
+      !!process.env.BREVO_PASS
+    );
+
+    await transporter.verify();
+
+    console.log("SMTP VERIFIED ✅");
 
     const info = await transporter.sendMail({
       from:
@@ -32,6 +50,7 @@ export const sendEmail = async (
     );
 
   } catch (error) {
+
     console.error(
       "EMAIL ERROR ❌:",
       error
