@@ -1,19 +1,14 @@
 import nodemailer from "nodemailer";
 
 const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
+  host: "smtp-relay.brevo.com",
   port: 587,
   secure: false,
-  requireTLS: true,
 
   auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
+    user: process.env.BREVO_USER,
+    pass: process.env.BREVO_PASS,
   },
-
-  connectionTimeout: 10000,
-  greetingTimeout: 10000,
-  socketTimeout: 10000,
 });
 
 export const sendEmail = async (
@@ -23,22 +18,25 @@ export const sendEmail = async (
 ) => {
   try {
 
-    // ✅ ADD THIS HERE
-    await transporter.verify();
-
-    console.log("SMTP READY ✅");
-
     const info = await transporter.sendMail({
-      from: `"Restaurant POS" <${process.env.EMAIL_USER}>`,
+      from:
+        `"Restaurant POS" <restaurantpos24@gmail.com>`,
       to,
       subject,
       html,
     });
 
-    console.log("EMAIL SENT ✅", info.messageId);
+    console.log(
+      "EMAIL SENT ✅",
+      info.messageId
+    );
 
   } catch (error) {
-    console.error("EMAIL ERROR ❌:", error);
+    console.error(
+      "EMAIL ERROR ❌:",
+      error
+    );
+
     throw error;
   }
 };
