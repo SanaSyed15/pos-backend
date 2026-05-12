@@ -1,59 +1,54 @@
-import nodemailer from "nodemailer";
-
-const transporter = nodemailer.createTransport({
-  host: "smtp-relay.brevo.com",
-  port: 465,
-secure: true,
-
-  auth: {
-    user: process.env.BREVO_USER,
-    pass: process.env.BREVO_PASS,
-  },
-
-  connectionTimeout: 10000,
-  greetingTimeout: 10000,
-  socketTimeout: 10000,
-});
+import axios from "axios";
 
 export const sendEmail = async (
   to,
   subject,
   html
 ) => {
+
   try {
 
-    console.log(
-      "BREVO USER:",
-      process.env.BREVO_USER
+    const response = await axios.post(
+
+      "https://api.brevo.com/v3/smtp/email",
+
+      {
+        sender: {
+          name: "Restaurant POS",
+          email: "restaurantpos24@gmail.com",
+        },
+
+        to: [
+          {
+            email: to,
+          },
+        ],
+
+        subject,
+        htmlContent: html,
+      },
+
+      {
+        headers: {
+          "api-key":
+            process.env.BREVO_API_KEY,
+
+          "Content-Type":
+            "application/json",
+        },
+      }
     );
-
-    console.log(
-      "BREVO PASS EXISTS:",
-      !!process.env.BREVO_PASS
-    );
-
-    await transporter.verify();
-
-    console.log("SMTP VERIFIED ✅");
-
-    const info = await transporter.sendMail({
-      from:
-        `"Restaurant POS" <restaurantpos24@gmail.com>`,
-      to,
-      subject,
-      html,
-    });
 
     console.log(
       "EMAIL SENT ✅",
-      info.messageId
+      response.data
     );
 
   } catch (error) {
 
     console.error(
-      "EMAIL ERROR ❌:",
-      error
+      "EMAIL ERROR ❌",
+      error.response?.data || error.message
     );
 
     throw error;
