@@ -222,74 +222,47 @@ export const forgotPassword = async (req, res) => {
   }
 };
 
-export const verifyOtp = async (req, res) => {
+
+
+export const setPassword =
+  async (req, res) => {
+
   try {
-    const { email, otp } = req.body;
 
-    if (!email || !otp) {
+    const { token, password } =
+      req.body;
+
+    if (!token || !password) {
       return res.status(400).json({
         success: false,
-        message: "Email and OTP required",
+        message:
+          "Token and password required",
       });
     }
 
-    const result = await pool.query(
-      `
-      SELECT *
-      FROM otp_codes
-      WHERE email = $1
-        AND otp = $2
-        AND expires_at > NOW()
-      ORDER BY created_at DESC
-      LIMIT 1
-      `,
-      [email, otp]
-    );
+    const result =
+      await pool.query(
+        `
+        SELECT *
+        FROM users
+        WHERE setup_token = $1
+          AND token_expiry > NOW()
+        `,
+        [token]
+      );
 
-    if (result.rows.length === 0) {
+    if (
+      result.rows.length === 0
+    ) {
       return res.status(400).json({
         success: false,
-        message: "Invalid or expired OTP",
+        message:
+          "Invalid or expired link",
       });
     }
 
-    // delete OTP after success
-    await pool.query(
-      `
-      DELETE FROM otp_codes
-      WHERE email = $1
-      `,
-      [email]
-    );
-
-    return res.json({
-      success: true,
-      message: "OTP verified successfully",
-    });
-
-  } catch (error) {
-    console.error(
-      "VERIFY OTP ERROR:",
-      error.message
-    );
-
-    return res.status(500).json({
-      success: false,
-      message: "OTP verification failed",
-    });
-  }
-};
-
-export const setPassword = async (req, res) => {
-  try {
-    const { email, password } = req.body;
-
-    if (!email || !password) {
-      return res.status(400).json({
-        success: false,
-        message: "Email and password required",
-      });
-    }
+    const user =
+      result.rows[0];
 
     const hashedPassword =
       await bcrypt.hash(password, 10);
@@ -297,18 +270,27 @@ export const setPassword = async (req, res) => {
     await pool.query(
       `
       UPDATE users
-      SET password = $1
-      WHERE email = $2
+      SET
+        password = $1,
+        setup_token = NULL,
+        token_expiry = NULL,
+        status = true
+      WHERE id = $2
       `,
-      [hashedPassword, email]
+      [
+        hashedPassword,
+        user.id,
+      ]
     );
 
     return res.json({
       success: true,
-      message: "Password set successfully",
+      message:
+        "Password set successfully",
     });
 
   } catch (error) {
+
     console.error(
       "SET PASSWORD ERROR:",
       error.message
@@ -316,7 +298,8 @@ export const setPassword = async (req, res) => {
 
     return res.status(500).json({
       success: false,
-      message: "Failed to set password",
+      message:
+        "Failed to set password",
     });
   }
 };
