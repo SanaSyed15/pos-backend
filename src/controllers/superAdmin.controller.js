@@ -148,9 +148,7 @@ await client.query(
   ]
 );
 
-const setupLink =
-`${process.env.SUPERADMIN_URL}
-/set-password/${setupToken}`;
+const setupLink = `${process.env.FRONTEND_URL}/set-password/${setupToken}`;
 
     await client.query("COMMIT");
 
