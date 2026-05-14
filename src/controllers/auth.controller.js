@@ -232,7 +232,9 @@ export const setPassword =
     const { token, password } =
       req.body;
 
+    // VALIDATION
     if (!token || !password) {
+
       return res.status(400).json({
         success: false,
         message:
@@ -240,20 +242,52 @@ export const setPassword =
       });
     }
 
-    const result =
+    // =========================
+    // CHECK USERS TABLE
+    // =========================
+
+    let result =
       await pool.query(
         `
-        SELECT *
+        SELECT *,
+        'USER' as account_type
+
         FROM users
+
         WHERE setup_token = $1
           AND token_expiry > NOW()
         `,
         [token]
       );
 
+    // =========================
+    // CHECK STAFF TABLE
+    // =========================
+
     if (
       result.rows.length === 0
     ) {
+
+      result =
+        await pool.query(
+          `
+          SELECT *,
+          'STAFF' as account_type
+
+          FROM staff
+
+          WHERE setup_token = $1
+            AND token_expiry > NOW()
+          `,
+          [token]
+        );
+    }
+
+    // INVALID TOKEN
+    if (
+      result.rows.length === 0
+    ) {
+
       return res.status(400).json({
         success: false,
         message:
@@ -261,27 +295,68 @@ export const setPassword =
       });
     }
 
-    const user =
+    const account =
       result.rows[0];
 
+    // HASH PASSWORD
     const hashedPassword =
-      await bcrypt.hash(password, 10);
+      await bcrypt.hash(
+        password,
+        10
+      );
 
-    await pool.query(
-      `
-      UPDATE users
-      SET
-        password = $1,
-        setup_token = NULL,
-        token_expiry = NULL,
-        status = true
-      WHERE id = $2
-      `,
-      [
-        hashedPassword,
-        user.id,
-      ]
-    );
+    // =========================
+    // UPDATE USERS
+    // =========================
+
+    if (
+      account.account_type ===
+      "USER"
+    ) {
+
+      await pool.query(
+        `
+        UPDATE users
+
+        SET
+          password = $1,
+          setup_token = NULL,
+          token_expiry = NULL,
+          status = true
+
+        WHERE id = $2
+        `,
+        [
+          hashedPassword,
+          account.id,
+        ]
+      );
+    }
+
+    // =========================
+    // UPDATE STAFF
+    // =========================
+
+    else {
+
+      await pool.query(
+        `
+        UPDATE staff
+
+        SET
+          password = $1,
+          setup_token = NULL,
+          token_expiry = NULL,
+          is_active = true
+
+        WHERE id = $2
+        `,
+        [
+          hashedPassword,
+          account.id,
+        ]
+      );
+    }
 
     return res.json({
       success: true,

@@ -1,65 +1,205 @@
 import pool from "../config/db.js";
 import bcrypt from "bcrypt";
+import crypto from "crypto";
+import { sendEmail } from "../utils/sendEmail.js";
 
 /* =========================
    CREATE STAFF
 ========================= */
+
 const createStaff = async (req, res) => {
+
   try {
-    if (!req.user || req.user.role !== "ADMIN") {
+
+    // 🔒 ADMIN CHECK
+    if (
+      !req.user ||
+      req.user.role !== "ADMIN"
+    ) {
+
       return res.status(403).json({
         success: false,
         message: "Access denied",
       });
     }
 
-    const { name, email, role, phone } = req.body;
-    const { restaurant_id } = req.user;
+    const {
+      name,
+      email,
+      role,
+      phone,
+    } = req.body;
 
-    if (!name || !email || !role) {
+    const {
+      restaurant_id
+    } = req.user;
+
+    // ✅ VALIDATION
+    if (
+      !name ||
+      !email ||
+      !role
+    ) {
+
       return res.status(400).json({
         success: false,
-        message: "Name, email and role are required",
+        message:
+          "Name, email and role are required",
       });
     }
 
-    const allowedRoles = ["SERVING_STAFF", "BILLING_STAFF"];
-    if (!allowedRoles.includes(role)) {
+    // ✅ ROLE VALIDATION
+    const allowedRoles = [
+      "SERVING_STAFF",
+      "BILLING_STAFF",
+    ];
+
+    if (
+      !allowedRoles.includes(role)
+    ) {
+
       return res.status(400).json({
         success: false,
-        message: "Invalid staff role",
+        message:
+          "Invalid staff role",
       });
     }
 
-    const defaultPassword = "Temp@123";
-    const hashedPassword = await bcrypt.hash(defaultPassword, 10);
+    // 🔐 GENERATE SETUP TOKEN
+    const setupToken =
+      crypto
+        .randomBytes(32)
+        .toString("hex");
 
-    const result = await pool.query(
-      `INSERT INTO staff 
-       (restaurant_id, name, email, password, role, phone)
-       VALUES ($1, $2, $3, $4, $5, $6)
-       RETURNING id, restaurant_id, name, email, role, phone, is_active, created_at`,
-      [restaurant_id, name, email, hashedPassword, role, phone || null]
+    const tokenExpiry =
+      new Date(
+        Date.now()
+        + 24 * 60 * 60 * 1000
+      );
+
+    // 🔐 TEMP PASSWORD HASH
+    const tempPassword =
+      await bcrypt.hash(
+        "SET_PASSWORD_PENDING",
+        10
+      );
+
+    // ✅ INSERT STAFF
+    const result =
+      await pool.query(
+
+      `
+      INSERT INTO staff
+      (
+        restaurant_id,
+        name,
+        email,
+        password,
+        role,
+        phone,
+        setup_token,
+        token_expiry
+      )
+      VALUES
+      (
+        $1,$2,$3,$4,
+        $5,$6,$7,$8
+      )
+
+      RETURNING
+        id,
+        restaurant_id,
+        name,
+        email,
+        role,
+        phone,
+        is_active,
+        created_at
+      `,
+
+      [
+        restaurant_id,
+        name,
+        email,
+        tempPassword,
+        role,
+        phone || null,
+        setupToken,
+        tokenExpiry,
+      ]
     );
 
+    // 🔗 SET PASSWORD LINK
+    const setupLink =
+`${process.env.SUPERADMIN_URL}/set-password/${setupToken}`;
+
+    // 📧 SEND EMAIL
+    await sendEmail(
+
+      email,
+
+      "Set Your Staff Account Password",
+
+      `
+      <div
+        style="
+          font-family: Arial;
+          padding: 20px;
+        "
+      >
+
+        <h2>
+          Welcome to Restaurant POS
+        </h2>
+
+        <p>
+          Your staff account
+          has been created.
+        </p>
+
+        <p>
+          Click below to
+          set your password:
+        </p>
+
+        <a href="${setupLink}">
+          Set Password
+        </a>
+
+        <p>
+          Link valid for
+          24 hours.
+        </p>
+
+      </div>
+      `
+    );
+
+    // ✅ SUCCESS
     return res.status(201).json({
       success: true,
-      message: "Staff created",
-      data: {
-        ...result.rows[0],
-        temporary_password: defaultPassword,
-      },
+      message:
+        "Staff created successfully",
+      data: result.rows[0],
     });
 
   } catch (error) {
+
+    // UNIQUE EMAIL
     if (error.code === "23505") {
+
       return res.status(400).json({
         success: false,
-        message: "Email already exists",
+        message:
+          "Email already exists",
       });
     }
 
-    console.error("Create staff error:", error.message);
+    console.error(
+      "Create staff error:",
+      error.message
+    );
+
     return res.status(500).json({
       success: false,
       message: "Server error",
