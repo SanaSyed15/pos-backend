@@ -135,93 +135,317 @@ export const superAdminForgotPassword = async (req, res) => {
   }
 };
 
-export const resetPassword = async (req, res) => {
+export const forgotPassword =
+  async (req, res) => {
+
   try {
-    const { token, password } = req.body;
 
-    const result = await pool.query(
-      "SELECT * FROM users WHERE reset_token=$1 AND reset_token_expiry > $2",
-      [token, Date.now()]
-    );
-
-    if (!result.rows.length) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid or expired token",
-      });
-    }
-
-    const user = result.rows[0];
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    await pool.query(
-      "UPDATE users SET password=$1, reset_token=NULL, reset_token_expiry=NULL WHERE id=$2",
-      [hashedPassword, user.id]
-    );
-
-    res.json({
-      success: true,
-      message: "Password reset successful",
-    });
-
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Server error" });
-  }
-};
-
-
-export const forgotPassword = async (req, res) => {
-  try {
     const { email } = req.body;
 
-    const result = await pool.query(
-      "SELECT * FROM users WHERE email=$1 AND role IN ('ADMIN','STAFF')",
-      [email]
-    );
+    // =========================
+    // CHECK USERS TABLE
+    // =========================
 
-    if (!result.rows.length) {
+    let result =
+      await pool.query(
+        `
+        SELECT *,
+        'USER' as account_type
+
+        FROM users
+
+        WHERE email = $1
+        `,
+        [email]
+      );
+
+    // =========================
+    // CHECK STAFF TABLE
+    // =========================
+
+    if (
+      result.rows.length === 0
+    ) {
+
+      result =
+        await pool.query(
+          `
+          SELECT *,
+          'STAFF' as account_type
+
+          FROM staff
+
+          WHERE email = $1
+          `,
+          [email]
+        );
+    }
+
+    // USER NOT FOUND
+    if (
+      result.rows.length === 0
+    ) {
+
       return res.status(404).json({
         success: false,
-        message: "User not found",
+        message:
+          "User not found",
       });
     }
 
-    const user = result.rows[0];
+    const account =
+      result.rows[0];
 
-    const token = crypto.randomBytes(32).toString("hex");
-    const expiry = Date.now() + 3600000; // 1 hour
+    // GENERATE TOKEN
+    const token =
+      crypto
+        .randomBytes(32)
+        .toString("hex");
 
-    await pool.query(
-      "UPDATE users SET reset_token=$1, reset_token_expiry=$2 WHERE id=$3",
-      [token, expiry, user.id]
+    const expiry =
+      Date.now() + 3600000;
+
+    // =========================
+    // UPDATE USERS
+    // =========================
+
+    if (
+      account.account_type ===
+      "USER"
+    ) {
+
+      await pool.query(
+        `
+        UPDATE users
+
+        SET
+          reset_token = $1,
+          reset_token_expiry = $2
+
+        WHERE id = $3
+        `,
+        [
+          token,
+          expiry,
+          account.id,
+        ]
+      );
+    }
+
+    // =========================
+    // UPDATE STAFF
+    // =========================
+
+    else {
+
+      await pool.query(
+        `
+        UPDATE staff
+
+        SET
+          reset_token = $1,
+          reset_token_expiry = $2
+
+        WHERE id = $3
+        `,
+        [
+          token,
+          expiry,
+          account.id,
+        ]
+      );
+    }
+
+    // RESET LINK
+    const resetLink =
+`${process.env.FRONTEND_URL}/reset-password/${token}`;
+
+    // SEND EMAIL
+    await sendEmail(
+
+      account.email,
+
+      "Reset Your Password",
+
+      `
+      <h3>Password Reset</h3>
+
+      <p>
+        Click below to
+        reset your password:
+      </p>
+
+      <a href="${resetLink}">
+        ${resetLink}
+      </a>
+
+      <p>
+        This link expires
+        in 1 hour.
+      </p>
+      `
     );
 
-    const resetLink = `${process.env.FRONTEND_URL}/reset-password/${token}`;
-
-    await sendEmail(
-  user.email,
-  "Reset Your Password",
-  `
-    <h3>Password Reset</h3>
-    <p>Click below to reset your password:</p>
-    <a href="${resetLink}">${resetLink}</a>
-    <p>This link expires in 1 hour.</p>
-  `
-);
-
-    res.json({
+    return res.json({
       success: true,
-      message: "Reset link sent",
+      message:
+        "Reset link sent",
     });
 
   } catch (error) {
-    console.error("Forgot password error:", error);
-    res.status(500).json({ message: "Server error" });
+
+    console.error(
+      "Forgot password error:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      message:
+        "Server error",
+    });
   }
 };
 
+export const resetPassword =
+  async (req, res) => {
+
+  try {
+
+    const { token, password } =
+      req.body;
+
+    // =========================
+    // CHECK USERS
+    // =========================
+
+    let result =
+      await pool.query(
+        `
+        SELECT *,
+        'USER' as account_type
+
+        FROM users
+
+        WHERE reset_token = $1
+          AND reset_token_expiry > $2
+        `,
+        [token, Date.now()]
+      );
+
+    // =========================
+    // CHECK STAFF
+    // =========================
+
+    if (
+      result.rows.length === 0
+    ) {
+
+      result =
+        await pool.query(
+          `
+          SELECT *,
+          'STAFF' as account_type
+
+          FROM staff
+
+          WHERE reset_token = $1
+            AND reset_token_expiry > $2
+          `,
+          [token, Date.now()]
+        );
+    }
+
+    // INVALID TOKEN
+    if (
+      result.rows.length === 0
+    ) {
+
+      return res.status(400).json({
+        success: false,
+        message:
+          "Invalid or expired token",
+      });
+    }
+
+    const account =
+      result.rows[0];
+
+    // HASH PASSWORD
+    const hashedPassword =
+      await bcrypt.hash(
+        password,
+        10
+      );
+
+    // =========================
+    // UPDATE USERS
+    // =========================
+
+    if (
+      account.account_type ===
+      "USER"
+    ) {
+
+      await pool.query(
+        `
+        UPDATE users
+
+        SET
+          password = $1,
+          reset_token = NULL,
+          reset_token_expiry = NULL
+
+        WHERE id = $2
+        `,
+        [
+          hashedPassword,
+          account.id,
+        ]
+      );
+    }
+
+    // =========================
+    // UPDATE STAFF
+    // =========================
+
+    else {
+
+      await pool.query(
+        `
+        UPDATE staff
+
+        SET
+          password = $1,
+          reset_token = NULL,
+          reset_token_expiry = NULL
+
+        WHERE id = $2
+        `,
+        [
+          hashedPassword,
+          account.id,
+        ]
+      );
+    }
+
+    return res.json({
+      success: true,
+      message:
+        "Password reset successful",
+    });
+
+  } catch (error) {
+
+    console.error(error);
+
+    return res.status(500).json({
+      success: false,
+      message:
+        "Server error",
+    });
+  }
+};
 
 
 export const setPassword =
