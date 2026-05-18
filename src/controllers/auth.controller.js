@@ -140,7 +140,10 @@ export const forgotPassword =
 
   try {
 
-    const { email } = req.body;
+    const {
+  email,
+  clientUrl
+} = req.body;
 
     // =========================
     // CHECK USERS TABLE
@@ -257,8 +260,12 @@ export const forgotPassword =
     }
 
     // RESET LINK
-    const resetLink =
-`${process.env.FRONTEND_URL}/reset-password/${token}`;
+    const baseUrl =
+  clientUrl ||
+  process.env.FRONTEND_URL;
+
+const resetLink =
+`${baseUrl}/reset-password/${token}`;
 
     // SEND EMAIL
     await sendEmail(
