@@ -8,25 +8,23 @@ const pool = new Pool({
     rejectUnauthorized: false,
   },
 
-  // 🔥 Pool Optimizations
-  max: 20, // maximum DB connections
+  max: 20,
 
-  idleTimeoutMillis: 30000, // close idle clients after 30 sec
+  idleTimeoutMillis: 30000,
 
-  connectionTimeoutMillis: 2000, // fail fast if DB unavailable
+  connectionTimeoutMillis: 10000,
 });
 
 // Test DB connection
 pool.connect()
   .then((client) => {
     console.log("✅ PostgreSQL connected");
-    client.release(); // VERY IMPORTANT
+    client.release();
   })
   .catch((err) => {
     console.error("❌ PostgreSQL connection error:", err);
   });
 
-// Handle unexpected errors
 pool.on("error", (err) => {
   console.error("Unexpected DB error", err);
 });
