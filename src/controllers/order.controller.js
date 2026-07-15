@@ -93,13 +93,50 @@ if (order_type === "DINE_IN") {
       );
     }
 
+    // Get GST percentage for restaurant
+const taxResult = await client.query(
+  `
+  SELECT gst_percentage
+  FROM restaurant_tax_details
+  WHERE restaurant_id = $1
+  `,
+  [restaurant_id]
+);
+
+const gst = Number(taxResult.rows[0]?.gst_percentage || 0);
+
+const taxAmount = Number(((subtotal * gst) / 100).toFixed(2));
+
+const totalAmount = Number((subtotal + taxAmount).toFixed(2));
+
+// Update order totals
+const updatedOrderResult = await client.query(
+  `
+  UPDATE orders
+  SET
+    subtotal = $1,
+    tax_amount = $2,
+    total_amount = $3
+  WHERE id = $4
+  RETURNING *
+  `,
+  [
+    subtotal,
+    taxAmount,
+    totalAmount,
+    order.id,
+  ]
+);
+
+const updatedOrder = updatedOrderResult.rows[0];
+
     await client.query("COMMIT");
 
     return res.status(201).json({
-      success: true,
-      message: "Order created successfully",
-      data: order,
-    });
+  success: true,
+  message: "Order created successfully",
+  data: updatedOrder,
+});
 
   } catch (error) {
     await client.query("ROLLBACK");

@@ -239,16 +239,6 @@ return res.status(201).json({
   },
 });
 
-    return res.status(201).json({
-      success: true,
-      message: "Order placed successfully",
-      data: {
-        order_id: order.id,
-        total_amount: total,
-        status: "PLACED",
-      },
-    });
-
   } catch (error) {
     await client.query("ROLLBACK");
     console.error("Create order error:", error.message);
