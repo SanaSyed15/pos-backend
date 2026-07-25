@@ -336,9 +336,108 @@ const getOrderStatus = async (req, res) => {
   }
 };
 
+/* =========================
+   GET RESTAURANT DETAILS
+========================= */
+export const getRestaurantDetails = async (req, res) => {
+  try {
+    const { restaurant_id, table_id, type } = req.user;
+
+    if (type !== "CUSTOMER") {
+      return res.status(403).json({
+        success: false,
+        message: "Access denied",
+      });
+    }
+
+    // Get restaurant + table
+    const restaurantResult = await pool.query(
+      `
+      SELECT
+        r.id,
+        r.name,
+        r.description,
+        r.restaurant_type,
+        r.address,
+        r.city,
+        r.state,
+        t.id AS table_id,
+        t.table_number
+      FROM restaurants r
+      LEFT JOIN tables t
+        ON t.id = $2
+       AND t.restaurant_id = r.id
+      WHERE r.id = $1
+      `,
+      [restaurant_id, table_id]
+    );
+
+    if (restaurantResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Restaurant not found",
+      });
+    }
+
+    // Get restaurant contacts
+    const contactsResult = await pool.query(
+      `
+      SELECT type, value
+      FROM restaurant_contacts
+      WHERE restaurant_id = $1
+      `,
+      [restaurant_id]
+    );
+
+    const contacts = {
+      phone: null,
+      email: null,
+    };
+
+    contactsResult.rows.forEach((contact) => {
+      if (contact.type === "PHONE") {
+        contacts.phone = contact.value;
+      } else if (contact.type === "EMAIL") {
+        contacts.email = contact.value;
+      }
+    });
+
+    const row = restaurantResult.rows[0];
+
+    return res.json({
+      success: true,
+      data: {
+        restaurant: {
+          id: row.id,
+          name: row.name,
+          description: row.description,
+          restaurant_type: row.restaurant_type,
+          address: row.address,
+          city: row.city,
+          state: row.state,
+        },
+        table: {
+          id: row.table_id,
+          table_number: row.table_number,
+        },
+        contacts,
+      },
+    });
+
+  } catch (error) {
+    console.error("Get restaurant details error:", error.message);
+
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+};
+
 export default {
   customerLogin,
   getMenu,
   createOrder,
   getOrderStatus,
+  getRestaurantDetails,
 };

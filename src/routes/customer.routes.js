@@ -8,19 +8,38 @@ const router = express.Router();
    PUBLIC ROUTES
 ========================= */
 
+// Customer login via QR
 router.post("/login", customerController.customerLogin);
 
 /* =========================
    PROTECTED ROUTES
 ========================= */
 
-// 🔥 Apply to all customer actions
+// Apply authentication to all routes below
 router.use(authenticateCustomer);
 
-router.get("/menu", customerController.getMenu);
+// Customer landing page
+router.get(
+  "/restaurant",
+  customerController.getRestaurantDetails
+);
 
-router.post("/orders", customerController.createOrder);
+// Menu
+router.get(
+  "/menu",
+  customerController.getMenu
+);
 
-router.get("/orders/:orderId", customerController.getOrderStatus);
+// Create order
+router.post(
+  "/orders",
+  customerController.createOrder
+);
+
+// Track order
+router.get(
+  "/orders/:orderId",
+  customerController.getOrderStatus
+);
 
 export default router;
