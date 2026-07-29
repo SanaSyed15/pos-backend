@@ -7,7 +7,11 @@ const router = express.Router();
 /* =========================
    PUBLIC ROUTES
 ========================= */
-
+// Customer landing page
+router.get(
+  "/restaurant",
+  customerController.getRestaurantDetails
+);
 // Customer login via QR
 router.post("/login", customerController.customerLogin);
 
@@ -17,12 +21,6 @@ router.post("/login", customerController.customerLogin);
 
 // Apply authentication to all routes below
 router.use(authenticateCustomer);
-
-// Customer landing page
-router.get(
-  "/restaurant",
-  customerController.getRestaurantDetails
-);
 
 // Menu
 router.get(

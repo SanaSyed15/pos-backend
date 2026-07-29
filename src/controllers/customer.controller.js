@@ -341,35 +341,53 @@ const getOrderStatus = async (req, res) => {
 ========================= */
 export const getRestaurantDetails = async (req, res) => {
   try {
-    const { restaurant_id, table_id, type } = req.user;
+    const { qrToken } = req.query;
 
-    if (type !== "CUSTOMER") {
-      return res.status(403).json({
+    if (!qrToken) {
+      return res.status(400).json({
         success: false,
-        message: "Access denied",
+        message: "QR token is required",
       });
     }
 
-    // Get restaurant + table
+    // Validate QR token and get table + restaurant
+    const tableResult = await pool.query(
+      `
+      SELECT
+        id,
+        restaurant_id,
+        table_number
+      FROM tables
+      WHERE qr_token = $1
+        AND is_active = true
+      `,
+      [qrToken]
+    );
+
+    if (tableResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Invalid or inactive QR code",
+      });
+    }
+
+    const table = tableResult.rows[0];
+
+    // Get restaurant details
     const restaurantResult = await pool.query(
       `
       SELECT
-        r.id,
-        r.name,
-        r.description,
-        r.restaurant_type,
-        r.address,
-        r.city,
-        r.state,
-        t.id AS table_id,
-        t.table_number
-      FROM restaurants r
-      LEFT JOIN tables t
-        ON t.id = $2
-       AND t.restaurant_id = r.id
-      WHERE r.id = $1
+        id,
+        name,
+        description,
+        restaurant_type,
+        address,
+        city,
+        state
+      FROM restaurants
+      WHERE id = $1
       `,
-      [restaurant_id, table_id]
+      [table.restaurant_id]
     );
 
     if (restaurantResult.rows.length === 0) {
@@ -379,14 +397,14 @@ export const getRestaurantDetails = async (req, res) => {
       });
     }
 
-    // Get restaurant contacts
+    // Get contacts
     const contactsResult = await pool.query(
       `
       SELECT type, value
       FROM restaurant_contacts
       WHERE restaurant_id = $1
       `,
-      [restaurant_id]
+      [table.restaurant_id]
     );
 
     const contacts = {
@@ -402,23 +420,23 @@ export const getRestaurantDetails = async (req, res) => {
       }
     });
 
-    const row = restaurantResult.rows[0];
+    const restaurant = restaurantResult.rows[0];
 
     return res.json({
       success: true,
       data: {
         restaurant: {
-          id: row.id,
-          name: row.name,
-          description: row.description,
-          restaurant_type: row.restaurant_type,
-          address: row.address,
-          city: row.city,
-          state: row.state,
+          id: restaurant.id,
+          name: restaurant.name,
+          description: restaurant.description,
+          restaurant_type: restaurant.restaurant_type,
+          address: restaurant.address,
+          city: restaurant.city,
+          state: restaurant.state,
         },
         table: {
-          id: row.table_id,
-          table_number: row.table_number,
+          id: table.id,
+          table_number: table.table_number,
         },
         contacts,
       },
